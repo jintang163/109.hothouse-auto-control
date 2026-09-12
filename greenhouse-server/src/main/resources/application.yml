@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: greenhouse-server
+  datasource:
+    url: jdbc:h2:mem:greenhouse;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+
+# IoT 接入层配置
+greenhouse:
+  iot:
+    port: 8600            # Netty 监听端口（网关/PLC 长连接）
+    idle-seconds: 90      # 超过该时长无心跳/数据则判定离线
+  control:
+    ack-timeout-seconds: 5   # 指令回执超时
+    max-retry: 3             # 失败最大重试次数
+
+logging:
+  level:
+    com.greenhouse: info

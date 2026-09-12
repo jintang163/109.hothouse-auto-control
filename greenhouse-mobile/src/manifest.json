@@ -1,0 +1,11 @@
+{
+  "name": "智慧温室",
+  "appid": "",
+  "description": "温室大棚智能环控系统移动端",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "h5": {
+    "title": "智慧温室",
+    "router": { "mode": "hash" }
+  }
+}

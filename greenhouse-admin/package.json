@@ -1,0 +1,23 @@
+{
+  "name": "greenhouse-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "温室大棚智能环控系统 - 管理端（实时监控大屏 / 历史曲线 / 策略配置 / 告警追溯）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.5.1",
+    "antd": "^5.21.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.2",
+    "vite": "^5.4.8"
+  }
+}

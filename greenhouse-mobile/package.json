@@ -1,0 +1,24 @@
+{
+  "name": "greenhouse-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "温室大棚智能环控系统 - 移动端（UniApp：现场监控 / 手动控阀 / 告警 / 巡检）",
+  "scripts": {
+    "dev:h5": "uni",
+    "build:h5": "uni build"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-alpha-1000920260909822",
+    "@dcloudio/uni-app-plus": "3.0.0-alpha-1000920260909822",
+    "@dcloudio/uni-components": "3.0.0-alpha-1000920260909822",
+    "@dcloudio/uni-h5": "3.0.0-alpha-1000920260909822",
+    "vue": "^3.4.21",
+    "vue-i18n": "^9.1.9"
+  },
+  "devDependencies": {
+    "@dcloudio/uni-cli-shared": "3.0.0-alpha-1000920260909822",
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-1000920260909822",
+    "sass": "^1.77.0",
+    "vite": "8.2.2"
+  }
+}

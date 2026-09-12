@@ -1,0 +1,26 @@
+{
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationBarTitleText": "环境监控", "enablePullDownRefresh": true } },
+    { "path": "pages/control/control", "style": { "navigationBarTitleText": "手动控阀", "enablePullDownRefresh": true } },
+    { "path": "pages/alarm/alarm", "style": { "navigationBarTitleText": "告警中心", "enablePullDownRefresh": true } },
+    { "path": "pages/inspection/inspection", "style": { "navigationBarTitleText": "巡检记录", "enablePullDownRefresh": true } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "智慧温室",
+    "navigationBarBackgroundColor": "#2e7d32",
+    "backgroundColor": "#f4f6f4"
+  },
+  "tabBar": {
+    "color": "#7a8a7a",
+    "selectedColor": "#2e7d32",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "监控" },
+      { "pagePath": "pages/control/control", "text": "控阀" },
+      { "pagePath": "pages/alarm/alarm", "text": "告警" },
+      { "pagePath": "pages/inspection/inspection", "text": "巡检" }
+    ]
+  }
+}
