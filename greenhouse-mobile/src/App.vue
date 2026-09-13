@@ -2,6 +2,13 @@
 export default {
   onLaunch() {
     console.log('智慧温室移动端启动')
+  },
+  onShow() {
+    // 应用回到前台：广播全局事件，页面据此重连 WS 并补拉数据（后台/离线恢复入口）
+    uni.$emit('app-foreground')
+  },
+  onHide() {
+    uni.$emit('app-background')
   }
 }
 </script>

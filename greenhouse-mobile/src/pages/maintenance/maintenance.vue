@@ -5,8 +5,11 @@
       <view>
         <text style="font-weight:600">设备保养提醒</text>
         <view class="muted" style="margin-top:6rpx">按累计运行小时与保养周期实时计算</view>
+        <view class="muted" style="margin-top:6rpx">{{ notifyHint }}</view>
       </view>
       <view class="row" style="gap:12rpx">
+        <button v-if="notifyPerm === 'default'" size="mini" class="btn-primary"
+                @click="enableNotify">开启系统通知</button>
         <view :class="['tag', overdue.length ? 'tag-red' : 'tag-green']">{{ overdue.length }} 到期</view>
         <view :class="['tag', dueSoon.length ? 'tag-orange' : 'tag-green']">{{ dueSoon.length }} 临近</view>
       </view>
@@ -91,6 +94,7 @@
 <script>
 import { api } from '@/common/api.js'
 import { store } from '@/common/store.js'
+import { systemNotifyPermission, ensureSystemNotifyPermission } from '@/common/notify.js'
 
 export default {
   data() {
@@ -99,7 +103,8 @@ export default {
       showForm: false,
       saving: false,
       current: null,
-      form: { operator: store.operator, note: '' }
+      form: { operator: store.operator, note: '' },
+      notifyPerm: 'unsupported'
     }
   },
   computed: {
@@ -107,15 +112,38 @@ export default {
       return this.ledger.filter(r => r.status === 'OVERDUE' || r.status === 'DUE_SOON')
     },
     overdue() { return this.ledger.filter(r => r.status === 'OVERDUE') },
-    dueSoon() { return this.ledger.filter(r => r.status === 'DUE_SOON') }
+    dueSoon() { return this.ledger.filter(r => r.status === 'DUE_SOON') },
+    notifyHint() {
+      switch (this.notifyPerm) {
+        case 'granted':
+          return '系统通知已开启：到期/临近将发系统通知 + 应用内提醒'
+        case 'denied':
+          return '系统通知已被拒绝，当前仅应用内提醒（可在浏览器/系统设置中重新开启）'
+        case 'default':
+          return '未开启系统通知时仅应用内提醒；开启后切后台也能收到提醒'
+        default:
+          return '当前平台仅支持应用内提醒（小程序无系统通知能力）'
+      }
+    }
   },
-  onShow() { this.load() },
+  onShow() {
+    this.load()
+    this.notifyPerm = systemNotifyPermission()
+  },
   onPullDownRefresh() {
     this.load().finally(() => uni.stopPullDownRefresh())
   },
   methods: {
     async load() {
       this.ledger = await api.maintenanceLedger(store.ghId)
+    },
+    async enableNotify() {
+      const ok = await ensureSystemNotifyPermission()
+      this.notifyPerm = systemNotifyPermission()
+      uni.showToast({
+        title: ok ? '系统通知已开启' : '未获得系统通知权限，将使用应用内提醒',
+        icon: 'none'
+      })
     },
     progressPct(r) {
       return Math.max(2, Math.min(100, Math.round((r.progress || 0) * 100)))

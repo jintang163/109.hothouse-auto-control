@@ -4,7 +4,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-/** 故障统计看板数据（近 N 天，按 FAILED 指令聚合；DEVICE_OFFLINE 仅作参考计数） */
+/**
+ * 故障统计看板数据（近 N 天，按 FAILED 指令聚合；DEVICE_OFFLINE 仅作参考计数）。
+ * 故障事件时间口径：回执时间优先（ackedAt → sentAt → createdAt），与运行台账一致；
+ * trend 的日期、lastFaultAt 均为该事件时间，跨日延迟回执计入回执发生日。
+ */
 public record FaultStatsDto(
         LocalDateTime generatedAt,
         int days,

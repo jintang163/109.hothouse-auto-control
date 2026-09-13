@@ -85,6 +85,7 @@
 <script>
 import { api } from '@/common/api.js'
 import { store } from '@/common/store.js'
+import { notifyMaintenanceReminders } from '@/common/notify.js'
 
 export default {
   data() {
@@ -139,8 +140,15 @@ export default {
   onShow() {
     this.loadOverview().then(() => this.connectWs())
   },
+  created() {
+    // 应用从后台恢复时（App.vue 广播）：WS 可能已被系统挂起断开，需重连并补拉
+    uni.$on('app-foreground', this.onAppForeground)
+  },
   onHide() { this.closeWs() },
-  onUnload() { this.closeWs() },
+  onUnload() {
+    uni.$off('app-foreground', this.onAppForeground)
+    this.closeWs()
+  },
   onPullDownRefresh() {
     this.loadOverview().finally(() => uni.stopPullDownRefresh())
   },
@@ -166,7 +174,16 @@ export default {
       this.loadReminders()
     },
     async loadReminders() {
-      try { this.reminders = await api.maintenanceReminders(store.ghId) } catch (e) { /* 忽略 */ }
+      try {
+        this.reminders = await api.maintenanceReminders(store.ghId)
+        // 新出现/升级的保养提醒：系统级通知优先，应用内提醒兜底；
+        // 后台/离线恢复后的补拉也走这里，由 notify 层按状态去重，不会重复打扰
+        notifyMaintenanceReminders(this.reminders)
+      } catch (e) { /* 忽略 */ }
+    },
+    onAppForeground() {
+      // 后台/离线恢复入口：补拉总览与提醒（错过的变化在此补发通知），并重连 WS
+      this.loadOverview().then(() => this.connectWs())
     },
     goMaintenance() {
       uni.navigateTo({ url: '/pages/maintenance/maintenance' })

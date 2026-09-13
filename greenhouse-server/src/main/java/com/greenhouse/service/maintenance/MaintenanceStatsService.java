@@ -147,13 +147,14 @@ public class MaintenanceStatsService {
                 dailyAcc.put(sn, perDay);
             }
 
-            // 3) 当日故障数（FAILED 指令）并入日结
+            // 3) 窗口内故障数（FAILED 指令）并入日结：按统一事件时间口径（回执优先）归集到自然日，
+            //    与运行段配对使用同一时间源，跨日延迟回执不会导致运行/故障落入不同日期
             Map<String, Map<LocalDate, Integer>> faults = new HashMap<>();
-            commandRepository.findByStatusAndCreatedAtBetween(
+            commandRepository.findByStatusAndEventTimeBetween(
                             CommandStatus.FAILED, windowStart.atStartOfDay(), today.plusDays(1).atStartOfDay())
                     .forEach(cmd -> faults
                             .computeIfAbsent(cmd.getDeviceSn(), k -> new HashMap<>())
-                            .merge(cmd.getCreatedAt().toLocalDate(), 1, Integer::sum));
+                            .merge(CommandEventTimes.of(cmd, now).toLocalDate(), 1, Integer::sum));
 
             // 4) 窗口内日结先删后插（全部设备 × 30 天，零值填充）
             // 显式 flush：Hibernate 同事务默认 insert 先于 delete 落库，不先清空会撞唯一约束
@@ -277,10 +278,9 @@ public class MaintenanceStatsService {
         runtimeRepository.save(runtime);
     }
 
+    /** 指令事件时间统一走 {@link CommandEventTimes}（回执优先），与故障统计口径一致 */
     private static LocalDateTime timeOf(ControlCommand cmd, LocalDateTime fallback) {
-        LocalDateTime t = cmd.getAckedAt() != null ? cmd.getAckedAt()
-                : (cmd.getSentAt() != null ? cmd.getSentAt() : cmd.getCreatedAt());
-        return t != null ? t : fallback;
+        return CommandEventTimes.of(cmd, fallback);
     }
 
     /** 该动作/状态是否表示设备启动运行 */

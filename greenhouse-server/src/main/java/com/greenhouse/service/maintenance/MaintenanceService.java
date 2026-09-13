@@ -40,6 +40,10 @@ import java.util.Set;
 /**
  * 设备运维业务：台账视图、保养提醒（实时计算）、保养规则与登记、故障统计与备件建议。
  * 只读取指令/告警/设备数据做统计分析，不产生任何控制指令。
+ * <p>
+ * 故障事件时间口径：FAILED 指令一律按「回执时间」（{@link CommandEventTimes#of}：
+ * ackedAt → sentAt → createdAt）归集，与运行台账的 ACKED 配对口径一致；
+ * 创建时间跨日、回执延迟落入次日时，故障计入回执发生日。
  */
 @Slf4j
 @Service
@@ -94,7 +98,7 @@ public class MaintenanceService {
         ruleRepository.findAll().forEach(r -> rules.put(r.getDeviceType(), r));
         Map<String, Integer> fault30d = new HashMap<>();
         Map<String, EnumMap<FaultCategory, Integer>> faultCats = new HashMap<>();
-        commandRepository.findByStatusAndCreatedAtBetween(CommandStatus.FAILED, windowStart, now)
+        commandRepository.findByStatusAndEventTimeBetween(CommandStatus.FAILED, windowStart, now)
                 .forEach(cmd -> {
                     fault30d.merge(cmd.getDeviceSn(), 1, Integer::sum);
                     faultCats.computeIfAbsent(cmd.getDeviceSn(), k -> new EnumMap<>(FaultCategory.class))
@@ -317,7 +321,7 @@ public class MaintenanceService {
         Map<String, LocalDateTime> lastFaultAt = new HashMap<>();
         int total = 0;
 
-        for (ControlCommand cmd : commandRepository.findByStatusAndCreatedAtBetween(CommandStatus.FAILED, from, now)) {
+        for (ControlCommand cmd : commandRepository.findByStatusAndEventTimeBetween(CommandStatus.FAILED, from, now)) {
             Device d = deviceMap.get(cmd.getDeviceSn());
             if (d == null || !ACTUATORS.contains(d.getType())) {
                 continue;
@@ -325,12 +329,14 @@ public class MaintenanceService {
             if (greenhouseId != null && !greenhouseId.equals(d.getGreenhouseId())) {
                 continue;
             }
+            // 故障事件时间：回执时间优先（与运行台账口径一致），跨日延迟回执计入回执发生日
+            LocalDateTime eventAt = CommandEventTimes.of(cmd, now);
             int cat = categorize(cmd.getErrorMsg()).ordinal();
             byType.computeIfAbsent(d.getType(), k -> new int[3])[cat]++;
             byGh.computeIfAbsent(d.getGreenhouseId(), k -> new int[3])[cat]++;
-            byDay.computeIfAbsent(cmd.getCreatedAt().toLocalDate(), k -> new int[3])[cat]++;
+            byDay.computeIfAbsent(eventAt.toLocalDate(), k -> new int[3])[cat]++;
             byDevice.computeIfAbsent(cmd.getDeviceSn(), k -> new int[3])[cat]++;
-            lastFaultAt.merge(cmd.getDeviceSn(), cmd.getCreatedAt(),
+            lastFaultAt.merge(cmd.getDeviceSn(), eventAt,
                     (a, b) -> a.isAfter(b) ? a : b);
             total++;
         }

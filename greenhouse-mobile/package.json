@@ -5,7 +5,8 @@
   "description": "温室大棚智能环控系统 - 移动端（UniApp：现场监控 / 手动控阀 / 告警 / 巡检）",
   "scripts": {
     "dev:h5": "uni",
-    "build:h5": "uni build"
+    "build:h5": "uni build",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-alpha-1000920260909822",

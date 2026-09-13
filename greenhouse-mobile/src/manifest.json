@@ -7,5 +7,10 @@
   "h5": {
     "title": "智慧温室",
     "router": { "mode": "hash" }
+  },
+  "app-plus": {
+    "modules": {
+      "Push": {}
+    }
   }
 }

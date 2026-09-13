@@ -251,6 +251,8 @@ function FaultsTab() {
 
   return (
     <>
+      <Alert style={{ marginBottom: 12 }} showIcon type="info"
+             message="故障按 FAILED 指令的回执时间归集（与运行台账同一口径），跨日延迟回执计入回执发生日" />
       <Row gutter={16} style={{ marginBottom: 8 }}>
         <Col span={8}><Card><Statistic title="近30天故障总数" value={stats.totalFaults} suffix="次"
                                        valueStyle={{ color: stats.totalFaults ? '#fa541c' : '#52c41a' }} /></Card></Col>
