@@ -36,6 +36,31 @@
       </view>
     </view>
 
+    <!-- 保养提醒 -->
+    <view v-if="dueReminders.length" class="card maint-card"
+          :class="overdueReminders.length ? 'maint-overdue' : 'maint-duesoon'"
+          @click="goMaintenance">
+      <view class="row between">
+        <view class="row" style="gap:10rpx">
+          <text style="font-size:34rpx">🔧</text>
+          <text style="font-weight:600">保养提醒</text>
+          <view :class="['tag', overdueReminders.length ? 'tag-red' : 'tag-orange']">
+            {{ overdueReminders.length ? overdueReminders.length + ' 台已到期' : dueReminders.length + ' 台临近' }}
+          </view>
+        </view>
+        <text class="muted">查看 ›</text>
+      </view>
+      <view style="margin-top:12rpx">
+        <text v-for="(r, i) in dueReminders.slice(0, 2)" :key="r.deviceSn" class="maint-line">
+          {{ r.deviceName }}：累计 {{ r.totalRunHours.toFixed(1) }}h，
+          {{ r.status === 'OVERDUE'
+             ? '已超期 ' + Math.abs(r.remainingHours).toFixed(1) + 'h'
+             : '剩 ' + r.remainingHours.toFixed(1) + 'h' }}
+        </text>
+        <text v-if="dueReminders.length > 2" class="muted"> 等 {{ dueReminders.length }} 台设备…</text>
+      </view>
+    </view>
+
     <!-- 执行器状态 -->
     <view class="card">
       <view class="section-title">执行器状态</view>
@@ -68,6 +93,7 @@ export default {
       ghInfo: {},
       latest: {},
       devices: [],
+      reminders: [],
       wsOnline: false,
       socket: null,
       reconnectTimer: null,
@@ -89,6 +115,12 @@ export default {
     },
     actuators() {
       return this.devices.filter(d => this.devMeta[d.type])
+    },
+    dueReminders() {
+      return this.reminders.filter(r => r.status === 'OVERDUE' || r.status === 'DUE_SOON')
+    },
+    overdueReminders() {
+      return this.reminders.filter(r => r.status === 'OVERDUE')
     },
     metrics() {
       const v = this.latest
@@ -131,6 +163,13 @@ export default {
       this.ghInfo = o.greenhouse
       this.latest = o.latest || {}
       this.devices = o.devices || []
+      this.loadReminders()
+    },
+    async loadReminders() {
+      try { this.reminders = await api.maintenanceReminders(store.ghId) } catch (e) { /* 忽略 */ }
+    },
+    goMaintenance() {
+      uni.navigateTo({ url: '/pages/maintenance/maintenance' })
     },
     async switchMode(mode) {
       await api.setMode(store.ghId, mode, store.operator)
@@ -182,6 +221,8 @@ export default {
         if (!data.greenhouseId || data.greenhouseId === store.ghId) {
           uni.showToast({ title: '告警：' + data.message, icon: 'none', duration: 4000 })
         }
+      } else if (event === 'maintenance') {
+        this.loadReminders()
       }
     }
   }
@@ -207,4 +248,7 @@ export default {
 .m-name { color: #7a8a7a; font-size: 26rpx; }
 .dev-row { padding: 18rpx 0; border-bottom: 1rpx solid #f0f2f0; }
 .dev-row:last-child { border-bottom: none; }
+.maint-card { border-left: 8rpx solid #fa8c16; }
+.maint-overdue { border-left-color: #ff4d4f; }
+.maint-line { display: block; color: #5a4a3a; font-size: 24rpx; margin-top: 6rpx; }
 </style>

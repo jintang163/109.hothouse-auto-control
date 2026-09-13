@@ -41,5 +41,10 @@ export const api = {
   handleAlarm: (id, operator) =>
     request(`/api/alarms/${id}/handle?operator=${encodeURIComponent(operator)}`, 'POST'),
   inspections: (ghId) => request(`/api/inspections?greenhouseId=${ghId}`),
-  addInspection: (payload) => request('/api/inspections', 'POST', payload)
+  addInspection: (payload) => request('/api/inspections', 'POST', payload),
+  maintenanceReminders: (ghId) =>
+    request(`/api/maintenance/reminders${ghId ? `?greenhouseId=${ghId}` : ''}`),
+  maintenanceLedger: (ghId) =>
+    request(`/api/maintenance/ledger${ghId ? `?greenhouseId=${ghId}` : ''}`),
+  addMaintenanceRecord: (payload) => request('/api/maintenance/records', 'POST', payload)
 }

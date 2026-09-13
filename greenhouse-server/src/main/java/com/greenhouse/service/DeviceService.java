@@ -7,6 +7,7 @@ import com.greenhouse.enums.AlarmLevel;
 import com.greenhouse.enums.AlarmType;
 import com.greenhouse.repository.DeviceRepository;
 import com.greenhouse.repository.GreenhouseRepository;
+import com.greenhouse.service.maintenance.MaintenanceStatsService;
 import com.greenhouse.ws.RealtimePushService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,15 +25,18 @@ public class DeviceService {
     private final GreenhouseRepository greenhouseRepository;
     private final AlarmService alarmService;
     private final RealtimePushService pushService;
+    private final MaintenanceStatsService maintenanceStatsService;
 
     public DeviceService(DeviceRepository deviceRepository,
                          GreenhouseRepository greenhouseRepository,
                          AlarmService alarmService,
-                         RealtimePushService pushService) {
+                         RealtimePushService pushService,
+                         MaintenanceStatsService maintenanceStatsService) {
         this.deviceRepository = deviceRepository;
         this.greenhouseRepository = greenhouseRepository;
         this.alarmService = alarmService;
         this.pushService = pushService;
+        this.maintenanceStatsService = maintenanceStatsService;
     }
 
     public List<Device> listByGreenhouse(Long greenhouseId) {
@@ -96,10 +100,13 @@ public class DeviceService {
     @Transactional
     public void updateState(String deviceSn, String state) {
         deviceRepository.findBySn(deviceSn).ifPresent(device -> {
+            String oldState = device.getState();
             device.setState(state);
             device.setLastSeenAt(LocalDateTime.now());
             deviceRepository.save(device);
             pushService.broadcast("device", device);
+            // 运维台账：状态边沿只刷新最近启/停时间戳，内部已隔离异常，不影响回执主链路
+            maintenanceStatsService.onStateEdge(device, oldState, state);
         });
     }
 }

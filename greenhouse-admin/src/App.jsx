@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Layout, Menu, Select, Typography } from 'antd'
 import {
   DashboardOutlined, LineChartOutlined, ControlOutlined,
-  AlertOutlined, AuditOutlined
+  AlertOutlined, AuditOutlined, ToolOutlined
 } from '@ant-design/icons'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import Dashboard from './pages/Dashboard.jsx'
@@ -10,6 +10,7 @@ import History from './pages/History.jsx'
 import StrategyPage from './pages/StrategyPage.jsx'
 import Alarms from './pages/Alarms.jsx'
 import Trace from './pages/Trace.jsx'
+import Maintenance from './pages/Maintenance.jsx'
 import { api } from './api'
 
 const { Header, Sider, Content } = Layout
@@ -27,7 +28,7 @@ function Shell() {
     })
   }, [])
 
-  const selectedKey = ['/', '/history', '/strategy', '/alarms', '/trace']
+  const selectedKey = ['/', '/history', '/strategy', '/alarms', '/trace', '/maintenance']
     .find(p => p === location.pathname) || '/'
 
   return (
@@ -45,6 +46,7 @@ function Shell() {
             { key: '/history', icon: <LineChartOutlined />, label: '历史曲线' },
             { key: '/strategy', icon: <ControlOutlined />, label: '策略配置' },
             { key: '/alarms', icon: <AlertOutlined />, label: '告警中心' },
+            { key: '/maintenance', icon: <ToolOutlined />, label: '设备运维' },
             { key: '/trace', icon: <AuditOutlined />, label: '操作追溯' }
           ]}
         />
@@ -65,6 +67,7 @@ function Shell() {
             <Route path="/history" element={<History greenhouseId={ghId} />} />
             <Route path="/strategy" element={<StrategyPage greenhouseId={ghId} />} />
             <Route path="/alarms" element={<Alarms />} />
+            <Route path="/maintenance" element={<Maintenance />} />
             <Route path="/trace" element={<Trace greenhouseId={ghId} />} />
           </Routes>
         )}

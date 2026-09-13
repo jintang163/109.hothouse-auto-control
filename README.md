@@ -53,6 +53,7 @@
    - **指令回执**：5s 未回执自动重试（默认 3 次），耗尽转 `FAILED` 并产生 CRITICAL 告警、中止链上后续动作；
    - **离线缓存**：网关离线时指令置 `QUEUED_OFFLINE`，网关注册重连后自动补发（来源标记 `OFFLINE_RETRY`）。
 4. **告警追溯**：阈值越限 / 设备离线 / 指令失败 / 互锁拦截四类告警，同类未处理告警去重；所有动作写操作日志，指令全生命周期可查，移动端可上报巡检记录。
+5. **设备运维（只读统计）**：以 ACKED 指令配对启停段，每日 00:07 全量幂等重算各执行器累计运行时长/启停次数（运行中尾段实时叠加）；按设备类型配置保养周期（默认风机/湿帘水泵 500h、遮阳网电机 200h），临近/到期通过大屏预警条、WS 推送与移动端卡片提醒，登记保养后周期重新起算；故障看板以 FAILED 指令为准（不受告警去重影响），按电机过载/通讯超时分类，支持按类型、大棚聚合与 30 天趋势，单设备近 30 天故障 ≥3 次自动给出检修/更换备件建议。
 
 ## 三、IoT 通信协议
 
@@ -97,8 +98,9 @@ npm install
 npm run dev        # http://localhost:5173 （已配置 /api、/ws 代理到 8080）
 ```
 
-页面：实时监控大屏（模式切换、手动控阀、实时指标/设备/策略/互锁）、历史曲线、
-策略配置（阈值/回差/防抖/冷却/定时计划）、告警中心、操作追溯（日志/指令/巡检）。
+页面：实时监控大屏（模式切换、手动控阀、实时指标/设备/策略/互锁/保养提醒）、历史曲线、
+策略配置（阈值/回差/防抖/冷却/定时计划）、告警中心、
+设备运维（运行台账/保养周期/故障看板柱状图+趋势线/备件建议）、操作追溯（日志/指令/巡检）。
 
 ### 4. 启动移动端（UniApp）
 
@@ -108,7 +110,8 @@ npm install
 npm run dev:h5     # http://localhost:5174
 ```
 
-底部 4 个 Tab：监控（WS 实时）、控阀（手动控制 + 最近指令）、告警（处理闭环）、巡检（新增记录）。
+底部 4 个 Tab：监控（WS 实时，首页含保养提醒卡片）、控阀（手动控制 + 最近指令）、告警（处理闭环）、巡检（新增记录）。
+点击保养提醒卡片进入「保养提醒」页：查看全部设备台账与到期/临近设备，可直接登记保养，周期随即重新起算。
 出 App / 各家小程序：用 **HBuilderX 导入本目录**发行；真机运行前把
 `src/common/api.js`（`#ifndef H5` 分支）与监控页 WS 地址中的 `localhost:8080`
 改为实际服务地址（H5 开发态走 vite 代理，无需修改）。
@@ -146,9 +149,14 @@ python3 simulator/ws_capture.py
 | GET/PUT | `/api/strategies/{greenhouseId}` | 查询/保存策略（含定时计划 scheduleJson） |
 | GET | `/api/sensor/latest` `/api/sensor/history?metric=&from=&to=` | 最新值/历史曲线 |
 | GET/POST | `/api/alarms` `/api/alarms/{id}/handle` | 告警查询/处理 |
+| GET/POST | `/api/maintenance/records` | 保养登记历史/新增登记（登记后周期重新起算） |
+| GET | `/api/maintenance/ledger` `/reminders` | 设备运行台账（累计时长/启停次数+保养进度）/待办提醒 |
+| GET/PUT | `/api/maintenance/rules` | 按设备类型查询/保存保养周期（如风机 500h） |
+| GET | `/api/maintenance/fault-stats?days=30` | 近 N 天故障按类型/大棚聚合、每日趋势、备件建议 |
+| POST | `/api/maintenance/run-now` | 手动触发台账全量重算（每日 00:07 自动执行，幂等） |
 | GET | `/api/logs` `/api/commands` | 操作日志 / 指令全生命周期 |
 | GET/POST | `/api/inspections` | 巡检记录 |
-| WS | `/ws/realtime` | 推送帧 `{event: sensor|device|alarm|command, data}` |
+| WS | `/ws/realtime` | 推送帧 `{event: sensor|device|alarm|command|maintenance, data}` |
 
 ## 六、后续可扩展
 

@@ -36,7 +36,21 @@ export const api = {
 
   logs: (ghId) => request(`/api/logs?greenhouseId=${ghId}`),
   commands: (ghId) => request(`/api/commands?greenhouseId=${ghId}`),
-  inspections: (ghId) => request(`/api/inspections?greenhouseId=${ghId}`)
+  inspections: (ghId) => request(`/api/inspections?greenhouseId=${ghId}`),
+
+  // 设备运维
+  maintenanceLedger: (ghId) => request(`/api/maintenance/ledger${ghId ? `?greenhouseId=${ghId}` : ''}`),
+  maintenanceReminders: (ghId) =>
+    request(`/api/maintenance/reminders${ghId ? `?greenhouseId=${ghId}` : ''}`),
+  maintenanceRules: () => request('/api/maintenance/rules'),
+  saveMaintenanceRules: (rules) =>
+    request('/api/maintenance/rules', { method: 'PUT', body: JSON.stringify(rules) }),
+  addMaintenanceRecord: (payload) =>
+    request('/api/maintenance/records', { method: 'POST', body: JSON.stringify(payload) }),
+  maintenanceRecords: (sn) =>
+    request(`/api/maintenance/records${sn ? `?deviceSn=${sn}` : ''}`),
+  faultStats: (days = 30) => request(`/api/maintenance/fault-stats?days=${days}`),
+  runMaintenance: () => request('/api/maintenance/run-now', { method: 'POST' })
 }
 
 /**

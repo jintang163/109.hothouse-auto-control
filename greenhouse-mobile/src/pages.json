@@ -3,7 +3,8 @@
     { "path": "pages/index/index", "style": { "navigationBarTitleText": "环境监控", "enablePullDownRefresh": true } },
     { "path": "pages/control/control", "style": { "navigationBarTitleText": "手动控阀", "enablePullDownRefresh": true } },
     { "path": "pages/alarm/alarm", "style": { "navigationBarTitleText": "告警中心", "enablePullDownRefresh": true } },
-    { "path": "pages/inspection/inspection", "style": { "navigationBarTitleText": "巡检记录", "enablePullDownRefresh": true } }
+    { "path": "pages/inspection/inspection", "style": { "navigationBarTitleText": "巡检记录", "enablePullDownRefresh": true } },
+    { "path": "pages/maintenance/maintenance", "style": { "navigationBarTitleText": "保养提醒", "enablePullDownRefresh": true } }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "white",

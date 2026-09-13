@@ -3,8 +3,9 @@ import {
   Card, Col, Row, Statistic, Tag, Button, Space, Select, Modal, message, Badge, Tooltip, Alert
 } from 'antd'
 import {
-  ThunderboltFilled, CloudServerOutlined, FieldTimeOutlined, ReloadOutlined
+  ThunderboltFilled, CloudServerOutlined, FieldTimeOutlined, ReloadOutlined, ToolOutlined
 } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
 import { api, openRealtimeSocket } from '../api'
 
 const METRIC_META = {
@@ -25,12 +26,18 @@ const MODE_LABEL = { AUTO: '自动', MANUAL: '手动', SCHEDULE: '定时' }
 
 /** 实时监控大屏 */
 export default function Dashboard({ greenhouseId }) {
+  const navigate = useNavigate()
   const [overview, setOverview] = useState(null)
   const [latest, setLatest] = useState({})   // metric -> {value,time}
   const [devices, setDevices] = useState([])
+  const [reminders, setReminders] = useState([])
   const [wsOnline, setWsOnline] = useState(false)
   const ghRef = useRef(greenhouseId)
   ghRef.current = greenhouseId
+
+  const loadReminders = async (ghId) => {
+    try { setReminders(await api.maintenanceReminders(ghId)) } catch { /* 运维模块不可用时静默 */ }
+  }
 
   const refresh = async () => {
     const o = await api.overview(greenhouseId)
@@ -40,6 +47,7 @@ export default function Dashboard({ greenhouseId }) {
   }
 
   useEffect(() => { refresh() }, [greenhouseId])
+  useEffect(() => { loadReminders(greenhouseId) }, [greenhouseId])
 
   // 全局实时事件：按当前大棚过滤
   useEffect(() => {
@@ -66,6 +74,8 @@ export default function Dashboard({ greenhouseId }) {
         if (data.greenhouseId && data.greenhouseId !== ghRef.current) return
         message.warning({ content: `告警：${data.message}`, duration: 5 })
         setOverview(o => o ? { ...o, openAlarms: (o.openAlarms || 0) + 1 } : o)
+      } else if (event === 'maintenance') {
+        loadReminders()
       }
     }, setWsOnline)
     return close
@@ -73,6 +83,8 @@ export default function Dashboard({ greenhouseId }) {
 
   const strategy = overview?.strategy
   const gh = overview?.greenhouse
+  const overdueList = reminders.filter(r => r.status === 'OVERDUE')
+  const dueSoonList = reminders.filter(r => r.status === 'DUE_SOON')
 
   const switchMode = async (mode) => {
     await api.setMode(greenhouseId, mode)
@@ -119,6 +131,19 @@ export default function Dashboard({ greenhouseId }) {
         banner
         message={wsOnline ? '实时通道已连接，数据秒级刷新' : '实时通道未连接，正在重连…（当前显示可能滞后）'}
       />
+      {overdueList.length > 0 ? (
+        <Alert
+          type="error" showIcon banner icon={<ToolOutlined />} style={{ cursor: 'pointer' }}
+          onClick={() => navigate('/maintenance')}
+          message={`${overdueList.length} 台设备已到保养期：${overdueList.map(r => r.deviceName).join('、')}，点击前往处理`}
+        />
+      ) : dueSoonList.length > 0 ? (
+        <Alert
+          type="warning" showIcon banner icon={<ToolOutlined />} style={{ cursor: 'pointer' }}
+          onClick={() => navigate('/maintenance')}
+          message={`${dueSoonList.length} 台设备临近保养：${dueSoonList.map(r => r.deviceName).join('、')}，点击安排保养`}
+        />
+      ) : null}
       <Row gutter={[12, 12]} align="middle" style={{ marginBottom: 12 }}>
         <Col flex="auto">
           <Space size="large" wrap>

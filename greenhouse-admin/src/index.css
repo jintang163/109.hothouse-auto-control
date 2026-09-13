@@ -15,3 +15,4 @@ body { background: #f0f2f5; }
 .ws-online { background: #52c41a; }
 .ws-offline { background: #ff4d4f; }
 .alarm-banner { margin-bottom: 12px; }
+.maint-overdue > td { background: #fff2f0 !important; }
