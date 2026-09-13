@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,7 +43,8 @@ import java.util.concurrent.TimeUnit;
  *   <li>指令下发与回执跟踪（超时未回执自动重试，耗尽转失败并告警）</li>
  *   <li>设备离线时指令缓存，网关重连后补发</li>
  *   <li>联动链：一组动作按序执行，上一环回执成功才执行下一环（互锁保护的基础）</li>
- *   <li>手动控制的安全互锁校验（湿帘未开禁强通风 / 风机运行禁关湿帘）</li>
+ *   <li>安全互锁校验（湿帘未开禁强通风 / 风机运行禁关湿帘）：手动、自动联动、定时计划
+ *       等所有来源的指令在下发前统一过 {@link #checkInterlock}，被拦截即告警并中止联动链</li>
  * </ul>
  */
 @Slf4j
@@ -134,6 +136,22 @@ public class ControlService {
             log.info("[联动链 {}] 全部动作执行完毕", chainId);
             chains.remove(chainId);
             return;
+        }
+        // 安全互锁兜底：任何来源（手动/规则引擎/定时计划）的链上动作，下发前都按
+        // 设备实时状态过一遍互锁校验，被拦截则告警并中止整链
+        Device device = deviceRepository.findBySn(next.deviceSn()).orElse(null);
+        if (device != null) {
+            String blocked = checkInterlock(device, next.action(),
+                    deviceRepository.findByGreenhouseId(device.getGreenhouseId()));
+            if (blocked != null) {
+                log.warn("[联动链 {}] 动作被安全互锁拦截：{} {} - {}", chainId, next.deviceSn(), next.action(), blocked);
+                alarmService.raise(device.getGreenhouseId(), next.deviceSn(), AlarmType.INTERLOCK_BLOCKED,
+                        AlarmLevel.WARN, blocked);
+                writeLog(device.getGreenhouseId(), next.deviceSn(), actionName(next.action()),
+                        ctx.source(), ctx.operator(), "被互锁阻止：" + blocked);
+                abortChain(chainId, "安全互锁拦截：" + blocked);
+                return;
+            }
         }
         ControlCommand cmd = createCommand(next, ctx.source());
         commandChain.put(cmd.getCommandId(), chainId);
@@ -325,19 +343,30 @@ public class ControlService {
         return null;
     }
 
-    /** 互锁校验，返回 null 表示通过 */
-    private String checkInterlock(Device device, String action, List<Device> devices) {
-        if (device.getType() == DeviceType.FAN && "ON".equals(action)) {
-            Optional<Device> curtain = devices.stream()
-                    .filter(d -> d.getType() == DeviceType.WET_CURTAIN).findFirst();
-            if (curtain.isPresent() && !"OPEN".equals(curtain.get().getState())) {
+    /**
+     * 互锁校验（基于设备当前实时状态），返回 null 表示通过。
+     * 互锁规则：开风机前湿帘必须已开（禁强通风）；关湿帘前风机必须已停。
+     */
+    public String checkInterlock(Device device, String action, List<Device> devices) {
+        Map<DeviceType, String> states = new EnumMap<>(DeviceType.class);
+        devices.forEach(d -> states.putIfAbsent(d.getType(), d.getState()));
+        return checkInterlock(device.getType(), action, states);
+    }
+
+    /**
+     * 互锁规则核心：基于给定状态视图校验，返回 null 表示通过。
+     * 规则引擎以「链式执行后」的推演状态调用，实现计划阶段的互锁预判。
+     */
+    public String checkInterlock(DeviceType type, String action, Map<DeviceType, String> states) {
+        if (type == DeviceType.FAN && "ON".equals(action)) {
+            String curtain = states.get(DeviceType.WET_CURTAIN);
+            if (states.containsKey(DeviceType.WET_CURTAIN) && !"OPEN".equals(curtain)) {
                 return "安全互锁：湿帘未开启，禁止启动风机强通风（请先开湿帘）";
             }
         }
-        if (device.getType() == DeviceType.WET_CURTAIN && "CLOSE".equals(action)) {
-            Optional<Device> fan = devices.stream()
-                    .filter(d -> d.getType() == DeviceType.FAN).findFirst();
-            if (fan.isPresent() && "ON".equals(fan.get().getState())) {
+        if (type == DeviceType.WET_CURTAIN && "CLOSE".equals(action)) {
+            String fan = states.get(DeviceType.FAN);
+            if ("ON".equals(fan)) {
                 return "安全互锁：风机运行中，禁止关闭湿帘（请先停风机）";
             }
         }

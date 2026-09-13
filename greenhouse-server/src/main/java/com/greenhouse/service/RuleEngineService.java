@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,7 +32,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>防抖：条件需持续 debounceSec 秒才触发</li>
  *   <li>冷却：同一设备两次动作的最小间隔，防频繁启停</li>
  *   <li>三设备联动：降温=湿帘+风机，加湿=湿帘，遮阳=遮阳网；湿帘可被降温/加湿复用</li>
- *   <li>安全互锁：风机启动前湿帘必须先开（链式执行保证顺序，湿帘失败则风机不启动）</li>
+ *   <li>安全互锁：复用 {@link ControlService#checkInterlock} 同一套规则（湿帘未开禁强通风/
+ *       风机运行禁关湿帘），计划阶段按链式推演状态预判——冷却窗口错位时（湿帘仍在冷却、
+ *       风机冷却已到）不会绕过互锁单独下发风机启动</li>
  * </ul>
  */
 @Slf4j
@@ -106,20 +109,21 @@ public class RuleEngineService {
 
         boolean curtainDesired = cooling || humidify;
 
+        // 安全互锁复用 ControlService 同一套校验：以当前状态为起点，每计划一个动作即
+        // 推进推演状态，后续动作基于「链式执行后」的状态判定（如湿帘 OPEN 已排入本链，
+        // 风机 ON 才允许跟随；湿帘因冷却未排入时，风机不得单独启动）
+        Map<DeviceType, String> plannedStates = new EnumMap<>(DeviceType.class);
+        devices.forEach(d -> plannedStates.putIfAbsent(d.getType(), d.getState()));
+
         // 启动顺序：先湿帘后风机（互锁）；停止顺序：先风机后湿帘
         if (curtain != null && curtainDesired != curtainOpen && cooldownReady(gh.getId(), DeviceType.WET_CURTAIN, s.getCooldownSec())) {
-            if (curtainDesired) {
-                actions.add(ControlAction.of(curtain.getSn(), "OPEN"));
-            } else if (!fanOn) {
-                // 风机已停才允许关湿帘；风机仍在转则本轮先停风机，下轮再关
-                actions.add(ControlAction.of(curtain.getSn(), "CLOSE"));
-            }
+            planAction(actions, plannedStates, curtain, curtainDesired ? "OPEN" : "CLOSE", gh.getName());
         }
         if (fan != null && cooling != fanOn && cooldownReady(gh.getId(), DeviceType.FAN, s.getCooldownSec())) {
-            actions.add(ControlAction.of(fan.getSn(), cooling ? "ON" : "OFF"));
+            planAction(actions, plannedStates, fan, cooling ? "ON" : "OFF", gh.getName());
         }
         if (shadeNet != null && shade != shadeOpen && cooldownReady(gh.getId(), DeviceType.SHADE_NET, s.getCooldownSec())) {
-            actions.add(ControlAction.of(shadeNet.getSn(), shade ? "OPEN" : "CLOSE"));
+            planAction(actions, plannedStates, shadeNet, shade ? "OPEN" : "CLOSE", gh.getName());
         }
 
         if (actions.isEmpty()) {
@@ -169,6 +173,32 @@ public class RuleEngineService {
             return true;
         }
         return false;
+    }
+
+    /**
+     * 计划一个联动动作：先过安全互锁（与手动控制同一套规则，基于链式推演状态），
+     * 通过后追加动作并推进推演状态；被互锁拦截则本轮暂缓，下轮评估重试。
+     */
+    private void planAction(List<ControlAction> actions, Map<DeviceType, String> plannedStates,
+                            Device device, String action, String ghName) {
+        String blocked = controlService.checkInterlock(device.getType(), action, plannedStates);
+        if (blocked != null) {
+            log.info("[规则引擎] 大棚「{}」{} {} 暂缓：{}", ghName, device.getName(), action, blocked);
+            return;
+        }
+        actions.add(ControlAction.of(device.getSn(), action));
+        plannedStates.put(device.getType(), deriveState(action));
+    }
+
+    /** 动作 → 执行后的设备状态（用于链式推演） */
+    private static String deriveState(String action) {
+        return switch (action) {
+            case "ON" -> "ON";
+            case "OFF" -> "OFF";
+            case "OPEN" -> "OPEN";
+            case "CLOSE" -> "CLOSED";
+            default -> action;
+        };
     }
 
     private boolean cooldownReady(Long ghId, DeviceType type, int cooldownSec) {

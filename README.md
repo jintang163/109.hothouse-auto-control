@@ -49,7 +49,7 @@
    - **功能状态机**：降温（湿帘+风机）/ 加湿（湿帘）/ 遮阳（遮阳网）独立判定。
 3. **执行（联动链 `ControlService`）**
    - 动作**按序执行、逐环回执**：开机 `湿帘 OPEN → 风机 ON`，停机 `风机 OFF → 湿帘 CLOSE`；
-   - **安全互锁**：湿帘未开成功则风机不会启动；风机运行中禁止关湿帘；手动指令同样受互锁拦截并告警；
+   - **安全互锁**：湿帘未开成功则风机不会启动；风机运行中禁止关湿帘；手动/自动/定时所有来源的指令在下发前统一过互锁校验，被拦截即产生 WARN 告警并中止联动链；
    - **指令回执**：5s 未回执自动重试（默认 3 次），耗尽转 `FAILED` 并产生 CRITICAL 告警、中止链上后续动作；
    - **离线缓存**：网关离线时指令置 `QUEUED_OFFLINE`，网关注册重连后自动补发（来源标记 `OFFLINE_RETRY`）。
 4. **告警追溯**：阈值越限 / 设备离线 / 指令失败 / 互锁拦截四类告警，同类未处理告警去重；所有动作写操作日志，指令全生命周期可查，移动端可上报巡检记录。
@@ -109,8 +109,9 @@ npm run dev:h5     # http://localhost:5174
 ```
 
 底部 4 个 Tab：监控（WS 实时）、控阀（手动控制 + 最近指令）、告警（处理闭环）、巡检（新增记录）。
-出 App / 各家小程序：用 **HBuilderX 导入本目录**发行，或在 `src/common/api.js`
-与监控页 WS 地址中把 `localhost:8080` 改为实际服务地址后真机运行。
+出 App / 各家小程序：用 **HBuilderX 导入本目录**发行；真机运行前把
+`src/common/api.js`（`#ifndef H5` 分支）与监控页 WS 地址中的 `localhost:8080`
+改为实际服务地址（H5 开发态走 vite 代理，无需修改）。
 
 ### 五分钟演示剧本
 
@@ -122,12 +123,23 @@ npm run dev:h5     # http://localhost:5174
 6. 模拟器加 `--disconnect 60` → 大屏网关变红、离线告警；手动下一条指令显示「离线缓存」，重连后自动补发；
 7. 移动端「控阀」点设备、「巡检」新增记录，管理端「操作追溯」可见。
 
+### 实时推送自检（sensor / device / alarm / command）
+
+```bash
+python3 simulator/ws_capture.py
+```
+
+被动监听只能等到 sensor/device/command —— alarm 仅在告警条件发生时产生。
+该脚本会主动触发一次「湿帘未开强启风机」的互锁拦截告警，并统计捕获到的事件类型：
+四类齐全退出码为 0；缺 sensor 说明模拟器未运行，缺 device/command 说明网关离线。
+自检期间大棚会被临时切为手动模式，结束后自动恢复。
+
 ## 五、REST API（统一返回 `{code,message,data}`，code=0 成功）
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/greenhouses` | 大棚（分区）列表 |
-| GET | `/api/greenhouses/{id}/overview` | 大屏总览：实时值+设备+策略+未处理告警数 |
+| GET | `/api/greenhouses/{id}/overview` | 大屏总览：实时值+设备+策略+本棚未处理告警数 |
 | PUT | `/api/greenhouses/{id}/mode?mode=AUTO|MANUAL|SCHEDULE` | 切换运行模式 |
 | GET | `/api/devices?greenhouseId=` | 设备列表与状态 |
 | POST | `/api/control` | 手动控制（body: deviceSn/action/operator，内含互锁校验） |

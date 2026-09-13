@@ -14,4 +14,5 @@ public interface AlarmRepository extends JpaRepository<Alarm, Long> {
     boolean existsByGreenhouseIdAndDeviceSnAndTypeAndStatusAndMessage(
             Long greenhouseId, String deviceSn, AlarmType type, AlarmStatus status, String message);
     long countByStatus(AlarmStatus status);
+    long countByGreenhouseIdAndStatus(Long greenhouseId, AlarmStatus status);
 }

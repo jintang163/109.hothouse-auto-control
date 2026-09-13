@@ -1,5 +1,10 @@
 // 后端接口封装（uni.request 全端可用：H5 / App / 小程序）
-const BASE = ''
+// #ifdef H5
+const BASE = '' // H5 开发态走 vite 代理（vite.config.js 已将 /api 代理到 8080）
+// #endif
+// #ifndef H5
+const BASE = 'http://localhost:8080' // App/小程序真机改为实际服务地址
+// #endif
 
 export function request(path, method = 'GET', data) {
   return new Promise((resolve, reject) => {

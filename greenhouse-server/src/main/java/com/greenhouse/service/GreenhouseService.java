@@ -61,7 +61,7 @@ public class GreenhouseService {
         }
         result.put("latest", latest);
         result.put("strategy", strategyRepository.findByGreenhouseId(id).orElse(null));
-        result.put("openAlarms", alarmRepository.countByStatus(AlarmStatus.OPEN));
+        result.put("openAlarms", alarmRepository.countByGreenhouseIdAndStatus(id, AlarmStatus.OPEN));
         return result;
     }
 
