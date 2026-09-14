@@ -84,8 +84,17 @@ public class ControlService {
     /** commandId -> chainId */
     private final Map<String, String> commandChain = new ConcurrentHashMap<>();
 
+    /** chainId -> 完成回调（农事任务等联动发起方据此闭环） */
+    private final Map<String, ChainCallback> chainCallbacks = new ConcurrentHashMap<>();
+
     private record ChainContext(Deque<ControlAction> remaining, CommandSource source,
                                 String operator, String reason) {}
+
+    /** 联动链终结回调：全部动作回执成功 / 任一环失败或被互锁中止 */
+    public interface ChainCallback {
+        /** @param success 整链是否全部成功；@param detail 失败原因或成功摘要 */
+        void onFinished(boolean success, String detail);
+    }
 
     public ControlService(ControlCommandRepository commandRepository,
                           DeviceRepository deviceRepository,
@@ -114,11 +123,25 @@ public class ControlService {
      * @return chainId
      */
     public String executeLinked(List<ControlAction> actions, CommandSource source, String operator, String reason) {
+        return executeLinked(actions, source, operator, reason, null);
+    }
+
+    /**
+     * 按序执行一组联动动作（支持终结回调，农事任务一键执行据此闭环）：
+     * 前一个动作回执成功后才下发下一个；任一环节失败则中止后续动作并告警。
+     *
+     * @return chainId
+     */
+    public String executeLinked(List<ControlAction> actions, CommandSource source, String operator,
+                                String reason, ChainCallback callback) {
         if (actions == null || actions.isEmpty()) {
             return null;
         }
         String chainId = UUID.randomUUID().toString().substring(0, 8);
         chains.put(chainId, new ChainContext(new ArrayDeque<>(actions), source, operator, reason));
+        if (callback != null) {
+            chainCallbacks.put(chainId, callback);
+        }
         log.info("[联动链 {}] 启动，共 {} 个动作，原因：{}", chainId, actions.size(), reason);
         writeLog(null, null, "联动启动", source, operator,
                 String.format("链 %s：%s，共 %d 个动作", chainId, reason, actions.size()));
@@ -135,6 +158,10 @@ public class ControlService {
         if (next == null) {
             log.info("[联动链 {}] 全部动作执行完毕", chainId);
             chains.remove(chainId);
+            ChainCallback cb = chainCallbacks.remove(chainId);
+            if (cb != null) {
+                cb.onFinished(true, "联动链全部动作回执成功");
+            }
             return;
         }
         // 安全互锁兜底：任何来源（手动/规则引擎/定时计划）的链上动作，下发前都按
@@ -160,10 +187,14 @@ public class ControlService {
 
     private void abortChain(String chainId, String reason) {
         ChainContext ctx = chains.remove(chainId);
+        ChainCallback cb = chainCallbacks.remove(chainId);
         if (ctx != null && !ctx.remaining().isEmpty()) {
             log.warn("[联动链 {}] 中止：{}，剩余 {} 个动作不再执行", chainId, reason, ctx.remaining().size());
             writeLog(null, null, "联动中止", ctx.source(), ctx.operator(),
                     String.format("链 %s 中止：%s，剩余 %d 个动作未执行", chainId, reason, ctx.remaining().size()));
+        }
+        if (cb != null) {
+            cb.onFinished(false, reason);
         }
     }
 

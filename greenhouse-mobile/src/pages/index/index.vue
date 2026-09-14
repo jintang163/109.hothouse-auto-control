@@ -61,6 +61,23 @@
       </view>
     </view>
 
+    <!-- 农事处方模块入口 -->
+    <view class="card">
+      <view class="section-title">农事生产</view>
+      <view class="farm-entry-row">
+        <view class="farm-entry" @click="goFarmTasks">
+          <text class="farm-icon">🌾</text>
+          <text class="farm-name">农事任务</text>
+          <text class="muted">处方生成 · 联动/反馈</text>
+        </view>
+        <view class="farm-entry" @click="goPest">
+          <text class="farm-icon">🐛</text>
+          <text class="farm-name">病虫害识别</text>
+          <text class="muted">拍照 · 图谱 · 防治</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 执行器状态 -->
     <view class="card">
       <view class="section-title">执行器状态</view>
@@ -188,6 +205,12 @@ export default {
     goMaintenance() {
       uni.navigateTo({ url: '/pages/maintenance/maintenance' })
     },
+    goFarmTasks() {
+      uni.navigateTo({ url: '/pages/task/task' })
+    },
+    goPest() {
+      uni.navigateTo({ url: '/pages/pest/pest' })
+    },
     async switchMode(mode) {
       await api.setMode(store.ghId, mode, store.operator)
       uni.showToast({ title: `已切${ {AUTO:'自动',MANUAL:'手动',SCHEDULE:'定时'}[mode] }模式`, icon: 'none' })
@@ -249,6 +272,14 @@ export default {
 <style lang="scss" scoped>
 .gh-name { font-size: 34rpx; font-weight: 600; }
 .section-title { font-weight: 600; margin-bottom: 12rpx; }
+.farm-entry-row { display: flex; gap: 20rpx; }
+.farm-entry {
+  flex: 1; border: 1rpx solid #dce8dc; border-radius: 14rpx;
+  padding: 20rpx; display: flex; flex-direction: column; gap: 8rpx;
+}
+.farm-entry:active { background: #f2f8f1; }
+.farm-icon { font-size: 48rpx; }
+.farm-name { font-weight: 600; font-size: 29rpx; color: #1f3a1f; }
 .grid {
   display: flex; flex-wrap: wrap; padding: 0 10rpx;
 }

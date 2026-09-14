@@ -22,6 +22,7 @@ import com.greenhouse.repository.StrategyRepository;
 import com.greenhouse.service.maintenance.MaintenanceStatsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -34,6 +35,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
+@Order(10)
 public class DataInitializer implements CommandLineRunner {
 
     private final GreenhouseRepository greenhouseRepository;

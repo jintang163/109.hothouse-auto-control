@@ -82,4 +82,23 @@ public class GreenhouseService {
         logRepository.save(entry);
         return gh;
     }
+
+    /** 更新品种 / 生育期 / 当前茬次（农事处方按品种+生育期匹配） */
+    public Greenhouse updateCropProfile(Long id, String variety, String growthStage, String currentBatchNo) {
+        Greenhouse gh = greenhouseRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("大棚不存在: " + id));
+        if (variety != null) gh.setVariety(variety.trim());
+        if (growthStage != null) gh.setGrowthStage(growthStage.trim());
+        if (currentBatchNo != null) gh.setCurrentBatchNo(currentBatchNo.trim());
+        gh = greenhouseRepository.save(gh);
+
+        OperationLog entry = new OperationLog();
+        entry.setGreenhouseId(id);
+        entry.setAction("更新种植档案");
+        entry.setSource(CommandSource.MANUAL);
+        entry.setDetail(String.format("品种=%s，生育期=%s，茬次=%s",
+                gh.getVariety(), gh.getGrowthStage(), gh.getCurrentBatchNo()));
+        logRepository.save(entry);
+        return gh;
+    }
 }

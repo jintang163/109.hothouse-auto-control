@@ -8,6 +8,8 @@ public enum CommandSource {
     MANUAL,
     /** 定时计划 */
     SCHEDULE,
+    /** 农事任务触发的设备联动 */
+    FARM_TASK,
     /** 离线缓存补发 */
     OFFLINE_RETRY
 }

@@ -29,6 +29,9 @@ greenhouse:
   control:
     ack-timeout-seconds: 5   # 指令回执超时
     max-retry: 3             # 失败最大重试次数
+  farm:
+    scan-ms: 60000           # 农事任务生成器扫描间隔（处方环境对比 + 周期触发）
+    scan-enabled: true       # 调试时可关闭自动任务生成
 
 logging:
   level:

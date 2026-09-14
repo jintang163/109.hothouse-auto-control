@@ -50,7 +50,53 @@ export const api = {
   maintenanceRecords: (sn) =>
     request(`/api/maintenance/records${sn ? `?deviceSn=${sn}` : ''}`),
   faultStats: (days = 30) => request(`/api/maintenance/fault-stats?days=${days}`),
-  runMaintenance: () => request('/api/maintenance/run-now', { method: 'POST' })
+  runMaintenance: () => request('/api/maintenance/run-now', { method: 'POST' }),
+
+  // 大棚种植档案（品种/生育期/茬次）
+  updateCropProfile: (id, payload) =>
+    request(`/api/greenhouses/${id}/crop-profile`, { method: 'PUT', body: JSON.stringify(payload) }),
+
+  // 农事处方库
+  prescriptions: () => request('/api/prescriptions'),
+  prescription: (id) => request(`/api/prescriptions/${id}`),
+  prescriptionVersions: (variety, growthStage) =>
+    request(`/api/prescriptions/versions?variety=${encodeURIComponent(variety)}&growthStage=${encodeURIComponent(growthStage)}`),
+  createPrescription: (payload, operator = 'admin') =>
+    request(`/api/prescriptions?operator=${operator}`, { method: 'POST', body: JSON.stringify(payload) }),
+  updatePrescription: (id, payload) =>
+    request(`/api/prescriptions/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  copyPrescription: (id, operator = 'admin') =>
+    request(`/api/prescriptions/${id}/copy?operator=${operator}`, { method: 'POST' }),
+  publishPrescription: (id) =>
+    request(`/api/prescriptions/${id}/publish`, { method: 'POST' }),
+  archivePrescription: (id) =>
+    request(`/api/prescriptions/${id}/archive`, { method: 'POST' }),
+
+  // 农事任务
+  farmTasks: (ghId) => request(`/api/farm-tasks${ghId ? `?greenhouseId=${ghId}` : ''}`),
+  createFarmTask: (payload, operator = 'admin') =>
+    request(`/api/farm-tasks?operator=${operator}`, { method: 'POST', body: JSON.stringify(payload) }),
+  runDevices: (id, operator = 'admin') =>
+    request(`/api/farm-tasks/${id}/run-devices?operator=${operator}`, { method: 'POST' }),
+  completeManual: (id, payload) =>
+    request(`/api/farm-tasks/${id}/complete-manual`, { method: 'POST', body: JSON.stringify(payload) }),
+  cancelFarmTask: (id, operator = 'admin') =>
+    request(`/api/farm-tasks/${id}/cancel?operator=${operator}`, { method: 'POST' }),
+
+  // 产量 / 农事日志分析
+  yields: (ghId) => request(`/api/yields${ghId ? `?greenhouseId=${ghId}` : ''}`),
+  addYield: (payload) => request('/api/yields', { method: 'POST', body: JSON.stringify(payload) }),
+  yieldAnalysis: (ghId) => request(`/api/yields/analysis${ghId ? `?greenhouseId=${ghId}` : ''}`),
+
+  // 病虫害
+  pestKnowledge: (keyword) => request(`/api/pest/knowledge${keyword ? `?keyword=${encodeURIComponent(keyword)}` : ''}`),
+  savePestKnowledge: (payload) =>
+    request('/api/pest/knowledge', { method: 'POST', body: JSON.stringify(payload) }),
+  updatePestKnowledge: (id, payload) =>
+    request(`/api/pest/knowledge/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deletePestKnowledge: (id) =>
+    request(`/api/pest/knowledge/${id}`, { method: 'DELETE' }),
+  pestDiagnoses: (ghId) => request(`/api/pest/diagnoses${ghId ? `?greenhouseId=${ghId}` : ''}`)
 }
 
 /**

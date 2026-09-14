@@ -1,4 +1,5 @@
 // 后端接口封装（uni.request 全端可用：H5 / App / 小程序）
+import { store } from './store.js'
 // #ifdef H5
 const BASE = '' // H5 开发态走 vite 代理（vite.config.js 已将 /api 代理到 8080）
 // #endif
@@ -46,5 +47,22 @@ export const api = {
     request(`/api/maintenance/reminders${ghId ? `?greenhouseId=${ghId}` : ''}`),
   maintenanceLedger: (ghId) =>
     request(`/api/maintenance/ledger${ghId ? `?greenhouseId=${ghId}` : ''}`),
-  addMaintenanceRecord: (payload) => request('/api/maintenance/records', 'POST', payload)
+  addMaintenanceRecord: (payload) => request('/api/maintenance/records', 'POST', payload),
+
+  // 农事处方与任务
+  farmTasks: (ghId) => request(`/api/farm-tasks${ghId ? `?greenhouseId=${ghId}` : ''}`),
+  runDevices: (id, operator) =>
+    request(`/api/farm-tasks/${id}/run-devices?operator=${encodeURIComponent(operator || store.operator)}`, 'POST'),
+  completeManual: (id, payload) =>
+    request(`/api/farm-tasks/${id}/complete-manual`, 'POST', payload),
+  cancelFarmTask: (id, operator) =>
+    request(`/api/farm-tasks/${id}/cancel?operator=${encodeURIComponent(operator || store.operator)}`, 'POST'),
+  prescriptions: () => request('/api/prescriptions'),
+
+  // 病虫害知识库 + 识别
+  pestKnowledge: () => request('/api/pest/knowledge'),
+  pestFeatures: () => request('/api/pest/features'),
+  pestDiagnose: (payload) => request('/api/pest/diagnose', 'POST', payload),
+  pestCreateTask: (id, operator) =>
+    request(`/api/pest/diagnoses/${id}/create-task?operator=${encodeURIComponent(operator || store.operator)}`, 'POST')
 }

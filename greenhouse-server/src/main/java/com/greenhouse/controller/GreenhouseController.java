@@ -37,4 +37,19 @@ public class GreenhouseController {
                                            @RequestParam(required = false) String operator) {
         return ApiResponse.ok(greenhouseService.setMode(id, mode, operator));
     }
+
+    /** 更新品种 / 生育期 / 当前茬次（农事处方匹配键） */
+    @PutMapping("/{id}/crop-profile")
+    public ApiResponse<Greenhouse> updateCropProfile(@PathVariable Long id,
+                                                     @RequestBody CropProfileRequest req) {
+        return ApiResponse.ok(greenhouseService.updateCropProfile(
+                id, req.getVariety(), req.getGrowthStage(), req.getCurrentBatchNo()));
+    }
+
+    @lombok.Data
+    public static class CropProfileRequest {
+        private String variety;
+        private String growthStage;
+        private String currentBatchNo;
+    }
 }
